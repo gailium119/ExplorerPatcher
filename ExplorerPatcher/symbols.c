@@ -18,9 +18,6 @@ const char* startdocked_SN[STARTDOCKED_SB_CNT] = {
     STARTDOCKED_SB_3,
     STARTDOCKED_SB_4
 };
-const char* startui_SN[STARTUI_SB_CNT] = {
-    STARTUI_SB_0
-};
 
 const wchar_t DownloadSymbolsXML[] =
 L"<toast scenario=\"reminder\" "
@@ -540,113 +537,6 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
 
 
 
-    if (rovi.dwBuildNumber >= 18362)
-    {
-        ZeroMemory(hash, sizeof(WCHAR) * 100);
-        ZeroMemory(wszPath, sizeof(WCHAR) * 100);
-        char startui_sb_dll[MAX_PATH];
-        ZeroMemory(
-            startui_sb_dll,
-            (MAX_PATH) * sizeof(char)
-        );
-        GetWindowsDirectoryA(
-            startui_sb_dll,
-            MAX_PATH
-        );
-        strcat_s(
-            startui_sb_dll,
-            MAX_PATH,
-            "\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\"
-        );
-        strcat_s(
-            startui_sb_dll,
-            MAX_PATH,
-            STARTUI_SB_NAME
-        );
-        strcat_s(
-            startui_sb_dll,
-            MAX_PATH,
-            ".dll"
-        );
-        GetWindowsDirectoryW(wszPath, MAX_PATH);
-        wcscat_s(wszPath, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\" _T(STARTUI_SB_NAME) L".dll");
-        ComputeFileHash(wszPath, hash, 100);
-        printf("[Symbols] Downloading symbols for \"%s\" (\"%s\")...\n", startui_sb_dll, hash);
-        if (VnDownloadSymbols(
-            NULL,
-            startui_sb_dll,
-            szSettingsPath,
-            MAX_PATH
-        ))
-        {
-            printf("[Symbols] Symbols for \"%s\" are not available - unable to download.\n", startui_sb_dll);
-            printf("[Symbols] Please refer to \"https://github.com/valinet/ExplorerPatcher/wiki/Symbols\" for more information.\n");
-            if (params->bVerbose)
-            {
-                FreeLibraryAndExitThread(
-                    hModule,
-                    6
-                );
-            }
-            return 6;
-        }
-        printf("[Symbols] Reading symbols...\n");
-        if (VnGetSymbols(
-            szSettingsPath,
-            symbols_PTRS.startui_PTRS,
-            startui_SN,
-            STARTUI_SB_CNT
-        ))
-        {
-            printf("[Symbols] Failure in reading symbols for \"%s\".\n", startui_sb_dll);
-            if (params->bVerbose)
-            {
-                FreeLibraryAndExitThread(
-                    hModule,
-                    7
-                );
-            }
-            return 7;
-        }
-        RegCreateKeyExW(
-            HKEY_CURRENT_USER,
-            TEXT(REGPATH_STARTMENU) L"\\" TEXT(STARTUI_SB_NAME),
-            0,
-            NULL,
-            REG_OPTION_NON_VOLATILE,
-            KEY_WRITE,
-            NULL,
-            &hKey,
-            &dwDisposition
-        );
-        if (!hKey || hKey == INVALID_HANDLE_VALUE)
-        {
-            if (params->bVerbose)
-            {
-                FreeLibraryAndExitThread(
-                    hModule,
-                    8
-                );
-            }
-            return 8;
-        }
-        RegSetValueExW(
-            hKey,
-            TEXT(STARTUI_SB_0),
-            0,
-            REG_DWORD,
-            &(symbols_PTRS.startui_PTRS[0]),
-            sizeof(DWORD)
-        );
-        if (hKey) RegCloseKey(hKey);
-    }
-
-
-
-
-
-
-
     RegCreateKeyExW(
         HKEY_CURRENT_USER,
         TEXT(REGPATH),
@@ -1007,48 +897,6 @@ BOOL LoadSymbols(symbols_addr* symbols_PTRS, HMODULE hModule)
             RegCloseKey(hKey);
         }
     }
-    bIsStartHardcoded = FALSE;
-    GetWindowsDirectoryW(wszPath, MAX_PATH);
-    wcscat_s(wszPath, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\" TEXT(STARTUI_SB_NAME) L".dll");
-    ComputeFileHash(wszPath, hash, 100);
-    if (!_stricmp(hash, "2768cc6cc7f686b2aa084cb5c8cce65d") || !_stricmp(hash, "a7c82cb9a9fd6f87897fc8a737d6b4d7")) // 493, 527, 556, 613, 675
-    {
-        symbols_PTRS->startui_PTRS[0] = 0x37180;
-        bIsStartHardcoded = TRUE;
-    }
-    else if (!_stricmp(hash, "bab11b2d1dca6b167f313f4d54de2b7d") || !_stricmp(hash, "0c1b88f888d9073c505d7f47724132c8")) // 708, 778
-    {
-        symbols_PTRS->startui_PTRS[0] = 0x37120;
-        bIsStartHardcoded = TRUE;
-    }
-    if (bIsStartHardcoded)
-    {
-        printf("[Symbols] Identified known \"" STARTUI_SB_NAME ".dll\" with hash %s.\n", hash);
-
-        RegCreateKeyExW(
-            HKEY_CURRENT_USER,
-            TEXT(REGPATH_STARTMENU) L"\\" TEXT(STARTUI_SB_NAME),
-            0,
-            NULL,
-            REG_OPTION_NON_VOLATILE,
-            KEY_WRITE,
-            NULL,
-            &hKey,
-            &dwDisposition
-        );
-        if (hKey)
-        {
-            RegSetValueExW(
-                hKey,
-                TEXT(STARTUI_SB_0),
-                0,
-                REG_DWORD,
-                &(symbols_PTRS->startui_PTRS[0]),
-                sizeof(DWORD)
-            );
-            RegCloseKey(hKey);
-        }
-    }
     if (!bIsTwinuiPcshellHardcoded || !bIsStartHardcoded)
     {
         RegCreateKeyExW(
@@ -1206,26 +1054,7 @@ BOOL LoadSymbols(symbols_addr* symbols_PTRS, HMODULE hModule)
         RTL_OSVERSIONINFOW rovi;
         if (VnGetOSVersion(&rovi) && rovi.dwBuildNumber >= 18362)
         {
-            RegCreateKeyExW(
-                HKEY_CURRENT_USER,
-                TEXT(REGPATH_STARTMENU) L"\\" TEXT(STARTUI_SB_NAME),
-                0,
-                NULL,
-                REG_OPTION_NON_VOLATILE,
-                KEY_READ,
-                NULL,
-                &hKey,
-                &dwDisposition
-            );
-            RegQueryValueExW(
-                hKey,
-                TEXT(STARTUI_SB_0),
-                0,
-                NULL,
-                &(symbols_PTRS->startui_PTRS[0]),
-                &dwSize
-            );
-            if (hKey) RegCloseKey(hKey);
+           
         }
     }
 
