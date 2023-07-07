@@ -12072,12 +12072,6 @@ void InjectStartMenu()
             return rv;
         }
     }
-        if (rv != 0)
-        {
-            FreeLibraryAndExitThread(hModule, rv);
-            return rv;
-        }
-    }
 
     rv = funchook_install(funchook, 0);
     if (rv != 0)
