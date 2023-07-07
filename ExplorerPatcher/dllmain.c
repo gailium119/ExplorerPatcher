@@ -11179,13 +11179,6 @@ INT64 StartDocked_SystemListPolicyProvider_GetMaximumFrequentAppsHook(void* _thi
     return StartMenu_maximumFreqApps;
 }
 
-INT64(*StartUI_SystemListPolicyProvider_GetMaximumFrequentAppsFunc)(void*) = NULL;
-
-INT64 StartUI_SystemListPolicyProvider_GetMaximumFrequentAppsHook(void* _this)
-{
-    return StartMenu_maximumFreqApps;
-}
-
 INT64(*StartDocked_StartSizingFrame_StartSizingFrameFunc)(void* _this) = NULL;
 
 INT64 StartDocked_StartSizingFrame_StartSizingFrameHook(void* _this)
@@ -11909,8 +11902,8 @@ void InjectStartMenu()
 
     if (dwStartShowClassicMode || !IsWindows11())
     {
-        LoadLibraryW(L"StartUI.dll");
-        hStartUI = GetModuleHandleW(L"StartUI.dll");
+        LoadLibraryW(L"StartDocked.dll");
+        hStartUI = GetModuleHandleW(L"StartDocked.dll");
 
         // Fixes hang when Start menu closes
         VnPatchDelayIAT(hStartUI, "ext-ms-win-ntuser-draw-l1-1-0.dll", "SetWindowRgn", Start_SetWindowRgn);
@@ -12040,14 +12033,6 @@ void InjectStartMenu()
                 &dwVal3,
                 (LPDWORD)(&dwSize)
             );
-            SHRegGetValueFromHKCUHKLMFunc(
-                TEXT(REGPATH_STARTMENU) TEXT("\\") TEXT(STARTUI_SB_NAME),
-                TEXT(STARTUI_SB_0),
-                SRRF_RT_REG_DWORD,
-                NULL,
-                &dwVal4,
-                (LPDWORD)(&dwSize)
-            );
         }
         FreeLibrary(hModule);
     }
@@ -12087,15 +12072,6 @@ void InjectStartMenu()
             return rv;
         }
     }
-    if (dwVal4 && dwVal4 != 0xFFFFFFFF && hStartUI)
-    {
-        StartUI_SystemListPolicyProvider_GetMaximumFrequentAppsFunc = (INT64(*)(void*, INT64, void*))
-            ((uintptr_t)hStartUI + dwVal4);
-        rv = funchook_prepare(
-            funchook,
-            (void**)&StartUI_SystemListPolicyProvider_GetMaximumFrequentAppsFunc,
-            StartUI_SystemListPolicyProvider_GetMaximumFrequentAppsHook
-        );
         if (rv != 0)
         {
             FreeLibraryAndExitThread(hModule, rv);
